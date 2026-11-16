@@ -1,0 +1,13 @@
+node_modules/
+web/dist/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+*.pem
+*.key
+credentials/
+secrets/
+*.sqlite
+*.sqlite3
