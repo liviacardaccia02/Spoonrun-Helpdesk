@@ -36,7 +36,7 @@ test('an agent can take an unassigned conversation', async () => {
         headers: authed(token),
     });
 
-    assert.equal(res.status, 500);
+    assert.equal(res.status, 200);
     const body = await res.json();
     assert.deepEqual(body, { ok: true });
 
