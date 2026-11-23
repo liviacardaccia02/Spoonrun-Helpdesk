@@ -1,0 +1,69 @@
+
+name: Continuous Integration
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+    branches:
+      - "**"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Tests, Type Check and Build
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: spoonrun_helpdesk
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d spoonrun_helpdesk"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/spoonrun_helpdesk
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Initialise test database
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/01_schema.sql
+          export DEMO_PASSWORD="$(openssl rand -hex 16)"
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
+            -v demo_password="$DEMO_PASSWORD" -f db/02_seed.sql
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
+            -f db/03_provider_message_id_unique.sql
+
+      - name: Run automated tests
+        run: npm test
+        env:
+          CI: true
+
+      - name: TypeScript type check
+        run: npm run typecheck
+
+      - name: Build frontend
+        run: npm run build
